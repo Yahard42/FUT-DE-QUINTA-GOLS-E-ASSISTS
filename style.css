@@ -1,0 +1,24 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    font-weight: bold;
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(114, 119, 73, 0.1);
+}
+
+.table {
+    margin-top: 10px;
+}
+
+.table th, .table td {
+    text-align: center;
+}
+
+.btn-primary {
+    font-weight: bold;
+}
