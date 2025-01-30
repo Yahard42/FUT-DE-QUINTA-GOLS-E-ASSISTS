@@ -84,3 +84,4 @@ document.addEventListener("keydown", function(event) {
 
 // Inicializa o ranking ao carregar a página
 document.addEventListener("DOMContentLoaded", updateRanking);
+
