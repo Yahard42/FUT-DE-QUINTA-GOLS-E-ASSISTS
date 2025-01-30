@@ -1,87 +1,86 @@
-// Inicialização do Firebase
-const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_AUTH_DOMAIN",
-    databaseURL: "SEU_DATABASE_URL",
-    projectId: "SEU_PROJECT_ID",
-    storageBucket: "SEU_STORAGE_BUCKET",
-    messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-    appId: "SEU_APP_ID"
-};
+// Histórico para desfazer ações
+let historyStack = [];
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// Atualiza a exibição do ranking
+function updateRanking() {
+    let players = JSON.parse(localStorage.getItem("players")) || {};
+    let ranking = Object.entries(players).map(([name, stats]) => ({
+        name: name,
+        points: stats.goals + stats.assists * 0.5, // 1 gol = 1 ponto, 1 assistência = 0.5 ponto
+        goals: stats.goals,
+        assists: stats.assists
+    }));
 
-// Função para adicionar gols e assistências
-function addStats(playerName, goals, assists) {
-    const totalPoints = goals + (assists * 0.5);
+    // Ordena por pontuação (maior para menor)
+    ranking.sort((a, b) => b.points - a.points);
 
-    const playerRef = db.ref('ranking/' + playerName);
-    playerRef.set({
-        gols: goals,
-        assistencias: assists,
-        pontos: totalPoints
-    });
-}
+    // Renderiza o ranking na tela
+    let rankingTable = document.getElementById("ranking");
+    rankingTable.innerHTML = ""; // Limpa antes de atualizar
 
-// Função para pegar todos os jogadores do ranking
-function getRanking() {
-    const rankingRef = db.ref('ranking');
-
-    rankingRef.once('value', (snapshot) => {
-        const rankingData = snapshot.val();
-        
-        const rankingList = [];
-        for (let player in rankingData) {
-            rankingList.push({
-                name: player,
-                gols: rankingData[player].gols,
-                assistencias: rankingData[player].assistencias,
-                pontos: rankingData[player].pontos
-            });
-        }
-
-        rankingList.sort((a, b) => b.pontos - a.pontos);
-
-        displayRanking(rankingList);
-    });
-}
-
-// Função para exibir o ranking
-function displayRanking(rankingList) {
-    const rankingTable = document.getElementById("rankingTable").getElementsByTagName('tbody')[0];
-    rankingTable.innerHTML = '';
-
-    rankingList.forEach(player => {
-        const row = document.createElement('tr');
+    ranking.forEach((player, index) => {
+        let row = document.createElement("tr");
         row.innerHTML = `
+            <td>${index + 1}</td>
             <td>${player.name}</td>
-            <td>${player.gols}</td>
-            <td>${player.assistencias}</td>
-            <td>${player.pontos}</td>
+            <td>${player.goals}</td>
+            <td>${player.assists}</td>
+            <td>${player.points.toFixed(1)}</td>
         `;
         rankingTable.appendChild(row);
     });
 }
 
-// Função para resetar o ranking
-function resetRanking() {
-    db.ref('ranking').set({});
-    alert("Ranking resetado!");
+// Adiciona gol para um jogador
+function addGoal(playerName) {
+    let players = JSON.parse(localStorage.getItem("players")) || {};
+    if (!players[playerName]) {
+        players[playerName] = { goals: 0, assists: 0 };
+    }
+
+    historyStack.push(JSON.stringify(players)); // Salva estado anterior
+    players[playerName].goals += 1;
+
+    localStorage.setItem("players", JSON.stringify(players));
+    updateRanking();
 }
 
-// Evento do formulário para adicionar stats
-document.getElementById('formStats').addEventListener('submit', function (event) {
-    event.preventDefault();
-    
-    const playerName = document.getElementById('playerName').value;
-    const goals = parseInt(document.getElementById('goals').value);
-    const assists = parseInt(document.getElementById('assists').value);
-    
-    addStats(playerName, goals, assists);
-    getRanking(); // Atualiza o ranking após adicionar
+// Adiciona assistência para um jogador
+function addAssist(playerName) {
+    let players = JSON.parse(localStorage.getItem("players")) || {};
+    if (!players[playerName]) {
+        players[playerName] = { goals: 0, assists: 0 };
+    }
+
+    historyStack.push(JSON.stringify(players)); // Salva estado anterior
+    players[playerName].assists += 1;
+
+    localStorage.setItem("players", JSON.stringify(players));
+    updateRanking();
+}
+
+// Atalho para voltar a última ação (Ctrl + Z)
+document.addEventListener("keydown", function(event) {
+    if (event.ctrlKey && event.key === "z") { 
+        if (historyStack.length > 0) {
+            let previousState = historyStack.pop();
+            localStorage.setItem("players", previousState);
+            updateRanking();
+        } else {
+            alert("Não há ações para desfazer!");
+        }
+    }
 });
 
-// Inicializando o ranking quando a página for carregada
-window.onload = getRanking;
+// Atalho para resetar tudo (Ctrl + R)
+document.addEventListener("keydown", function(event) {
+    if (event.ctrlKey && event.key === "r") {  
+        if (confirm("Tem certeza que deseja zerar o ranking?")) {
+            localStorage.removeItem("players");
+            location.reload();
+        }
+    }
+});
 
+// Inicializa o ranking ao carregar a página
+document.addEventListener("DOMContentLoaded", updateRanking);
